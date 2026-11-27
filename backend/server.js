@@ -1,6 +1,4 @@
 
-
-
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
@@ -13,6 +11,10 @@ require("dotenv").config();
 const app = express();
 const PORT = 5000;
 
+// ====================
+// Middleware
+// ====================
+
 app.use(cors());
 app.use(express.json());
 
@@ -20,13 +22,16 @@ app.use(express.json());
 // MongoDB Connection
 // ====================
 
+const MONGO_URI =
+    process.env.MONGO_URI || "mongodb://127.0.0.1:27017/distributed_files";
+
 mongoose
-    .connect(process.env.MONGO_URI)
+    .connect(MONGO_URI)
     .then(() => {
         console.log("MongoDB Connected Successfully");
     })
     .catch((error) => {
-        console.error("MongoDB Connection Error:", error);
+        console.error("MongoDB Connection Error:", error.message);
     });
 
 // ====================
@@ -61,8 +66,16 @@ const File = mongoose.model("File", fileSchema);
 // Multer Configuration
 // ====================
 
+const uploadFolder = path.join(__dirname, "uploads");
+
+if (!fs.existsSync(uploadFolder)) {
+    fs.mkdirSync(uploadFolder, {
+        recursive: true
+    });
+}
+
 const upload = multer({
-    dest: "uploads/"
+    dest: uploadFolder
 });
 
 // ====================
@@ -281,8 +294,6 @@ app.delete("/files/:id", async (req, res) => {
             });
         }
 
-        // Physical file path
-
         const filePath = path.join(
             __dirname,
             "..",
@@ -290,8 +301,6 @@ app.delete("/files/:id", async (req, res) => {
             file.node,
             file.filename
         );
-
-        // Delete physical file
 
         if (fs.existsSync(filePath)) {
 
@@ -302,8 +311,6 @@ app.delete("/files/:id", async (req, res) => {
                 file.filename
             );
         }
-
-        // Delete MongoDB record
 
         await File.findByIdAndDelete(
             req.params.id
